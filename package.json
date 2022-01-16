@@ -9,7 +9,7 @@
     "deploy:dev": "npm run build && near dev-deploy res/status_message.wasm",
     "dev": "npm run deploy:dev && npm start",
     "start": "npm run build && npm run build:web && env-cmd -f ./neardev/dev-account.env parcel ./frontend/index.html",
-    "postbuild": "cp target/wasm32-unknown-unknown/release/status_message.wasm ./res/"
+    "postbuild": "cp target/wasm32-unknown-unknown/release/near_tips.wasm ./res/"
   },
   "repository": {
     "type": "git",
@@ -31,7 +31,7 @@
     "big.js": "^5.2.2",
     "borsh": "^0.4.0",
     "env-cmd": "^10.1.0",
-    "near-api-js": "^0.43.1",
+    "near-api-js": "^0.44.2",
     "prop-types": "^15.7.2",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",

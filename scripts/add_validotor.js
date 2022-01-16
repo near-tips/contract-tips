@@ -25,18 +25,23 @@ const config = {
 
         const contract = new nearAPI.Contract(
             account, // the account object that is connecting
-            "norfolks.testnet",
+            "near-tips.testnet",
             {
                 // name of contract you're connecting to
-                viewMethods: ["get_user_tips"], // view methods do not change state but usually return a value
+                viewMethods: ["get_deposit_account_id"], // view methods do not change state but usually return a value
                 changeMethods: ["add_validator"], // change methods modify state
                 sender: account, // account object to initialize and sign transactions.
             }
         );
         
-        console.log(await contract.add_validator(
+        // console.log(await contract.add_validator(
+        //     {
+        //         validator_pk: "8ie7snyK8q9yUnEf74XiBaBUCiJ3LQGZonefxn9qNao7" // argument name and value - pass empty object if no args required
+        //     }
+        // ))
+        console.log(await contract.get_deposit_account_id(
             {
-                validator_pk: "AejpTNQSuSN1vCZaeYRgoUeJa6dZL4orSVFmPidbRofa" // argument name and value - pass empty object if no args required
+                account_id: "near-tips.near"
             }
         ))
     } catch (e) {
