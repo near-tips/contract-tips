@@ -29,7 +29,7 @@ const config = {
             {
                 // name of contract you're connecting to
                 viewMethods: ["get_deposit_account_id", "get_validators"], // view methods do not change state but usually return a value
-                changeMethods: ["add_validator"], // change methods modify state
+                changeMethods: ["add_validator", "send_tips"], // change methods modify state
                 sender: account, // account object to initialize and sign transactions.
             }
         );
@@ -39,9 +39,19 @@ const config = {
         //         validator_pk: "8ie7snyK8q9yUnEf74XiBaBUCiJ3LQGZonefxn9qNao7" // argument name and value - pass empty object if no args required
         //     }
         // ))
-        console.log(await contract.get_validators(
+        // console.log(await contract.get_validators(
+        //     {
+        //         // account_id: "near-tips.near"
+        //     }
+        // ))
+
+        console.log(await contract.send_tips(
             {
-                // account_id: "near-tips.near"
+                user_ids: [{
+                    service: "Stackoverflow",
+                    id: "0"
+                }],
+                tips: 1
             }
         ))
     } catch (e) {

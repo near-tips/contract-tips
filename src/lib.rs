@@ -209,6 +209,9 @@ impl NearTips {
     }
 
     pub fn authentification_commitment(&mut self, access_token_2hash: Vec<u8>, account_id_commitment: Vec<u8>) {
+        if access_token_2hash.len() != 32 || account_id_commitment.len() != 32 {
+            near_sdk::env::panic("Wrong length of hashes.".as_bytes())
+        }
         if self.commitments.contains(&access_token_2hash) {
             near_sdk::env::panic("access_token_2hash commitment already exists.".as_bytes())
         }
