@@ -209,7 +209,7 @@ impl NearTips {
     }
 
     pub fn authentification_commitment(&mut self, access_token_2hash: Vec<u8>, account_id_commitment: Vec<u8>) {
-        if access_token_2hash.len() != 32 || account_id_commitment.len() != 32 {
+        if access_token_2hash.len() != 64 || account_id_commitment.len() != 64 {
             near_sdk::env::panic("Wrong length of hashes.".as_bytes())
         }
         if self.commitments.contains(&access_token_2hash) {
@@ -439,11 +439,12 @@ mod tests {
 
         let mut hasher = Sha512::new();
 
-        let access_key_hash = "access_key_hash";
-        let access_key_2_hash = Sha512::digest(access_key_hash.as_bytes());
+        let access_key = "access_key";
+        let access_key_hash = Sha512::digest(access_key.as_bytes());
+        let access_key_2_hash = Sha512::digest(&access_key_hash.to_vec());
         let account_id = "bob_near";
         hasher.update(&account_id.as_bytes());
-        hasher.update(&access_key_hash.as_bytes());
+        hasher.update(&access_key_hash);
         let account_id_commitment = hasher.finalize_reset();
 
         contract.authentification_commitment(access_key_2_hash.to_vec(), account_id_commitment.to_vec());
@@ -455,16 +456,16 @@ mod tests {
         //     .duration_since(UNIX_EPOCH)
         //     .expect("Time went backwards").as_secs() + 10000
         // };
-        hasher.update(&access_key_hash.as_bytes());
+        hasher.update(&access_key_hash);
         hasher.update(&service_id.try_to_vec().unwrap());
         hasher.update(&account_id.as_bytes());
         hasher.update(deadline.to_be_bytes());
 
-        let msg: Vec<u8> = [&access_key_hash.as_bytes(), &service_id.try_to_vec().unwrap()[..], &account_id.as_bytes(), &deadline.clone().to_be_bytes()].concat();
+        let msg: Vec<u8> = [&access_key_hash, &service_id.try_to_vec().unwrap()[..], &account_id.as_bytes(), &deadline.clone().to_be_bytes()].concat();
 
         println!("msg: {:?}", &msg);
 
-        println!("access key: {}", &access_key_hash);
+        println!("access key: {:?}", &access_key_hash);
         println!("service_id: {:?}", &service_id.try_to_vec().unwrap());
         println!("account_id: {}", &account_id);
         println!("deadline: {}", &deadline);
@@ -474,7 +475,7 @@ mod tests {
         println!("{} - {:?}",deadline.clone(), deadline.to_be_bytes());
         let signature = validatork_kp.sign_prehashed(hasher, None).unwrap();
 
-        contract.link_account(service_id, access_key_hash.as_bytes().to_vec(), account_id.to_string(), deadline, vec![signature.to_bytes().to_vec()], vec![val_pk]);
+        contract.link_account(service_id, access_key_hash.to_vec(), account_id.to_string(), deadline, vec![signature.to_bytes().to_vec()], vec![val_pk]);
         let accs = contract.get_linked_accounts(account_id.to_string());
         assert_eq!(
             accs.len(),
