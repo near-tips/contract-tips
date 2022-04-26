@@ -34,26 +34,26 @@ const config = {
             }
         );
         
-        // console.log(await contract.add_validator(
-        //     {
-        //         validator_pk: "8ie7snyK8q9yUnEf74XiBaBUCiJ3LQGZonefxn9qNao7" // argument name and value - pass empty object if no args required
-        //     }
-        // ))
-        // console.log(await contract.get_validators(
-        //     {
-        //         // account_id: "near-tips.near"
-        //     }
-        // ))
-
-        console.log(await contract.send_tips(
+        console.log(await contract.add_validator(
             {
-                user_ids: [{
-                    service: "Stackoverflow",
-                    id: "0"
-                }],
-                tips: 1
+                validator_pk: "E3PNqDq6VfR2eNk3nBDkgVEVz9RjeZkBMVe9tZDjupER" // argument name and value - pass empty object if no args required
             }
         ))
+        console.log(await contract.get_validators(
+            {
+                // account_id: "near-tips.near"
+            }
+        ))
+
+        // console.log(await contract.send_tips(
+        //     {
+        //         user_ids: [{
+        //             service: "Stackoverflow",
+        //             id: "0"
+        //         }],
+        //         tips: "1"
+        //     }
+        // ))
     } catch (e) {
         console.log(e)
     }
