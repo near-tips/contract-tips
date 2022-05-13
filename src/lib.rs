@@ -5,9 +5,10 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::collections::{ LookupMap, LookupSet, UnorderedMap };
 use near_sdk::{env, near_bindgen, Promise, AccountId, Balance, BorshStorageKey};
-use near_sdk::json_types::U128;
+use near_sdk::json_types::{U128, U64};
 use sha2::Sha512;
 use sha2::Digest;
+use ed25519_dalek::Verifier;
 
 mod internal;
 mod manage;
@@ -48,6 +49,13 @@ pub enum StorageKeys {
     Validators,
     WhitelistedTokens,
     SubLinkedAccounts { account_hash: Vec<u8> },
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Debug)]
+struct ValidatorMsg {
+    service_id: ServiceId,
+    account_id: AccountId,
+    deadline: u64,
 }
 
 
@@ -155,8 +163,9 @@ impl NearTips {
     }
 
     #[payable]
-    pub fn link_account(&mut self, service_id: ServiceId, access_token_hash: Vec<u8>, account_id: AccountId, deadline: u64, signatures: Vec<Vec<u8>>, validators_pks: Vec<AccountId>) {
-        self.validate_signatures(&service_id, access_token_hash, &account_id, deadline, signatures, validators_pks);
+    pub fn link_account(&mut self, service_id: ServiceId, account_id: AccountId, deadline: U64, signatures: Vec<Vec<u8>>, validators_pks: Vec<AccountId>) {
+        let deadline = deadline.0;
+        self.validate_signatures(&service_id, &account_id, deadline, signatures, validators_pks);
         let mut links_map = self.linked_accounts.get(&account_id).unwrap_or_else(|| {
             let new_map = UnorderedMap::new(
                 StorageKeys::SubLinkedAccounts { account_hash: env::sha256(account_id.as_bytes()) }
@@ -172,8 +181,9 @@ impl NearTips {
     }
 
     #[payable]
-    pub fn withdraw_tips_to(&mut self, service_id: ServiceId, access_token_hash: Vec<u8>, account_id: AccountId, deadline: u64, signatures: Vec<Vec<u8>>, validators_pks: Vec<AccountId>) {
-        self.validate_signatures(&service_id, access_token_hash, &account_id, deadline, signatures, validators_pks);
+    pub fn withdraw_tips_to(&mut self, service_id: ServiceId, account_id: AccountId, deadline: U64, signatures: Vec<Vec<u8>>, validators_pks: Vec<AccountId>) {
+        let deadline = deadline.0;
+        self.validate_signatures(&service_id, &account_id, deadline, signatures, validators_pks);
         self.withdraw_tips_to_account_with_commission(&service_id, &account_id, 5, false);
     }
 }

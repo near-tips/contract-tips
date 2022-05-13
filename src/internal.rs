@@ -2,7 +2,7 @@ use crate::*;
 
 #[near_bindgen]
 impl NearTips {
-    
+
     pub(crate) fn set_tips(&mut self, service_token_id: &ServiceTokenId, set_tips: u128) {
         println!("ENTER SET TIP");
         println!("ServiceTokenId: {:?}", service_token_id);
@@ -43,17 +43,17 @@ impl NearTips {
         (account_id, attached_deposit)
     }
 
-    pub(crate) fn validate_signatures(&mut self, service_id: &ServiceId, access_token_hash: Vec<u8>, account_id: &AccountId, deadline: u64, signatures: Vec<Vec<u8>>, validators_pks: Vec<AccountId>) {
+    pub(crate) fn validate_signatures(&mut self, service_id: &ServiceId, account_id: &AccountId, deadline: u64, signatures: Vec<Vec<u8>>, validators_pks: Vec<AccountId>) {
         if signatures.len() != validators_pks.len() { near_sdk::env::panic("Wrong pks/signatures len.".as_bytes()) }
         if (signatures.len() as u64) < self.validators.len() * 2 / 3 || signatures.len() == 0 { near_sdk::env::panic("Not enough validators approve.".as_bytes()) }
-        if deadline < near_sdk::env::block_timestamp() { near_sdk::env::panic("Deadline is missed.".as_bytes()) }
+        if deadline < near_sdk::env::block_timestamp() { near_sdk::env::panic("Signature is not more valid because of deadline.".as_bytes()) }
 
-        let mut hasher = Sha512::new();
-        hasher.update(&access_token_hash);
-        hasher.update(service_id.try_to_vec().unwrap());
-        hasher.update(account_id.as_bytes());
-        hasher.update(deadline.to_be_bytes());
-
+        let msg = ValidatorMsg {
+            service_id: service_id.clone(),
+            account_id: account_id.clone(),
+            deadline
+        };
+        let msg = msg.try_to_vec().unwrap();
         let mut used_validators = Vec::new();
         for it in signatures.iter().zip(validators_pks.iter()) {
             let (signature, pk) = it;
@@ -64,7 +64,7 @@ impl NearTips {
             }
             used_validators.push(pk);
 
-            if trusted_key.verify_prehashed(hasher.clone(), None, &signature).is_err() {
+            if trusted_key.verify(&msg, &signature).is_err() {
                 near_sdk::env::panic("Wrong signature for provided content.".as_bytes());
             }
         }

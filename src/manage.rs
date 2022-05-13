@@ -61,7 +61,7 @@ mod upgrade {
         env::setup_panic_hook();
         env::set_blockchain_interface(Box::new(near_blockchain::NearBlockchain {}));
         let contract: NearTips = env::state_read().expect("ERR_CONTRACT_IS_NOT_INITIALIZED");
-        contract.assert_owner();
+        contract.only_horseradish();
         let current_id = env::current_account_id().into_bytes();
         let method_name = "migrate".as_bytes().to_vec();
         unsafe {

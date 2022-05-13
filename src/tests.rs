@@ -187,8 +187,7 @@ mod tests {
 
         let mut hasher = Sha512::new();
 
-        let access_key = "access_key";
-        let access_key_hash = Sha512::digest(access_key.as_bytes());
+        let access_key = "4U9BG7i8*dhMsKThlPn7MA))";
         let account_id = "carol_near";
         let service_id = ServiceId{ service: Service::Stackoverflow, id: '1'.to_string() };
         let deadline: u64 = 1644359955;//{
@@ -197,26 +196,27 @@ mod tests {
         //     .duration_since(UNIX_EPOCH)
         //     .expect("Time went backwards").as_secs() + 10000
         // };
-        hasher.update(&access_key_hash);
-        hasher.update(&service_id.try_to_vec().unwrap());
-        hasher.update(&account_id.as_bytes());
-        hasher.update(deadline.to_be_bytes());
+        let msg = ValidatorMsg {
+            service_id: service_id.clone(),
+            account_id: account_id.to_string(),
+            deadline
+        };
+        hasher.update(&msg.try_to_vec().unwrap());
 
-        let msg: Vec<u8> = [&access_key_hash, &service_id.try_to_vec().unwrap()[..], &account_id.as_bytes(), &deadline.clone().to_be_bytes()].concat();
-
-        println!("msg: {:?}", &msg);
-
-        println!("access key: {:?}", &access_key_hash);
-        println!("service_id: {:?}", &service_id.try_to_vec().unwrap());
-        println!("account_id: {}", &account_id);
+        println!("msg: {:?}", hex::encode(msg.try_to_vec().unwrap()));
+        println!("service_id: {:?}", hex::encode(&service_id.try_to_vec().unwrap()));
+        println!("account_id: {:?}", &account_id.as_bytes());
         println!("deadline: {}", &deadline);
         let ch = hasher.clone();
-        println!("hash: {:?}", &ch.finalize());
+        let msg_hash = ch.finalize();
+        println!("hash: {}", hex::encode(&msg_hash));
+        println!("hash bytes: {:?}", &msg_hash);
 
         println!("{} - {:?}",deadline.clone(), deadline.to_be_bytes());
-        let signature = validatork_kp.sign_prehashed(hasher, None).unwrap();
+        let signature = validatork_kp.sign(&msg.try_to_vec().unwrap());
+        // let signature = validatork_kp.sign_prehashed(hasher, None).unwrap();
 
-        contract.link_account(service_id.clone(), access_key_hash.to_vec(), account_id.to_string(), deadline, vec![signature.to_bytes().to_vec()], vec![val_pk]);
+        contract.link_account(service_id.clone(), account_id.to_string(), U64(deadline), vec![signature.to_bytes().to_vec()], vec![val_pk]);
         let accs = contract.get_linked_accounts(account_id.to_string());
         assert_eq!(
             accs.len(),
@@ -246,19 +246,17 @@ mod tests {
         let mut hasher = Sha512::new();
 
         let access_key = "4U9BG7i8*dhMsKThlPn7MA))";
-        let access_key_hash = Sha512::digest(access_key.as_bytes());
         let account_id = "receiver_near";
         let service_id = ServiceId{ service: Service::Stackoverflow, id: '1'.to_string() };
-        let deadline: u64 = 1644359955;
+        let deadline = 1644359955;
+        let msg = ValidatorMsg {
+            service_id: service_id.clone(),
+            account_id: account_id.to_string(),
+            deadline
+        };
 
-        hasher.update(&access_key_hash);
-        hasher.update(&service_id.try_to_vec().unwrap());
-        hasher.update(&account_id.as_bytes());
-        hasher.update(deadline.to_be_bytes());
-        let msg: Vec<u8> = [&access_key_hash, &service_id.try_to_vec().unwrap()[..], &account_id.as_bytes(), &deadline.clone().to_be_bytes()].concat();
+        hasher.update(&msg.try_to_vec().unwrap());
 
-        println!("msg: {:?}", &msg);
-        println!("access key hash: {:?}", &access_key_hash);
         println!("service_id: {:?}", &service_id.try_to_vec().unwrap());
         println!("account_id: {}", &account_id);
         println!("deadline: {}", &deadline);
@@ -266,15 +264,12 @@ mod tests {
         println!("hash: {:?}", &ch.finalize());
 
         println!("{} - {:?}",deadline.clone(), deadline.to_be_bytes());
-        let signature = validatork_kp.sign_prehashed(hasher, None).unwrap();
+        let signature = validatork_kp.sign(&msg.try_to_vec().unwrap());
+        // let signature = validatork_kp.sign_prehashed(hasher, None).unwrap();
 
         // Send tips
         contract.send_tips(vec![service_id.clone()], U128(tip_amount as u128));
-        // println!("Context predecessor_account_id: {}", &context.predecessor_account_id);
-        // println!("Set account id: {}", &account_id);
-        // context.predecessor_account_id = account_id.to_string();
-        // testing_env!(context.clone());
-        // contract.withdraw_tips_to(service_id.clone(), access_key_hash.to_vec(), account_id.to_string(), deadline, vec![signature.to_bytes().to_vec()], vec![val_pk]);
+        contract.withdraw_tips_to(service_id.clone(), account_id.to_string(), U64(deadline), vec![signature.to_bytes().to_vec()], vec![val_pk]);
 
     }
 
@@ -296,31 +291,36 @@ mod tests {
 
     #[test]
     fn test_2_hash() {
-        let mut hasher = Sha512::new();
-        let access_token = "3HAZM0ejGmzYWJpky32DQQ))";
-        hasher.update(&access_token.as_bytes());
-        let access_token_hash = hasher.finalize_reset();
-        hasher.update(&access_token_hash);
-        let access_token_2hash = hasher.finalize_reset();
-        println!("AT: {}", &access_token);
-        println!("ATH: {}", hex::encode(&access_token_hash));
-        println!("AT2H: {:?}", hex::encode(&access_token_2hash));
-
+        let deadline: u64 = 1651531536353000000;
         let account_id = "verkhohliad.testnet";
-        hasher.update(&account_id.as_bytes());
-        hasher.update(&access_token_hash);
-        println!("Account id bytes: {}", hex::encode(&account_id.as_bytes()));
-        println!("Extended hash: {}", hex::encode(hasher.finalize_reset()));
+        let service_id = ServiceId{
+            service: Service::Stackoverflow,
+            id: "17694405".to_string()
+        };
+        let msg = ValidatorMsg {
+            service_id: service_id.clone(),
+            account_id: account_id.to_string(),
+            deadline
+        };
+        let msg = msg.try_to_vec().unwrap();
+        println!("MSG: {:?}", &msg);
 
-        let hand_mande_concat = "7665726b686f686c6961642e746573746e657458b4ae35c648b1e13e8e4f2e11743afc5ef1ca8f1dba01ff8b616b11d39d5a020b04b840dd1521b13f0fedbf9076d82b1c72afdd68e5af1a06a5d19402126f5f";
-        hasher.update(hex::decode(&hand_mande_concat).expect("Decode failed"));
-        println!("Hash of HM Concat: {}", hex::encode(hasher.finalize_reset()));
+        let signature = hex::decode("83838d99b383098354ac52c4360f04f378001344ae686d1ca04a785e38306fb8b92f8375ce071b4737322a56a221d0c633e0d7ff52b899079ab1909868d3800a").unwrap();
+        let key_as_bytes = &bs58::decode("Ah51gcfsTnrnvfhj6AERkEWz3E8U1yiRqhPRGza1Nu6p").into_vec().unwrap();
+        let trusted_key = ed25519_dalek::PublicKey::from_bytes(key_as_bytes).unwrap();
+        let signature = ed25519_dalek::Signature::try_from(signature.as_ref()).unwrap();
+        println!("Sig validation: {}", trusted_key.verify(&msg, &signature).is_ok());
 
-        let vectorized_concat = [account_id.as_bytes(), &access_token_hash].concat();
-        println!("Vect concat: {}", hex::encode(&vectorized_concat));
-        hasher.update(&vectorized_concat);
-        println!("This concat: {}", hex::encode(hasher.finalize_reset()));
-        println!("Concated bytes: {:?}", hex::decode(&hand_mande_concat).expect("fail"));
+
+        let rec = vec![
+            0,   8,   0,   0,   0,  49,  55,  54,  57,  52,
+           52,  48,  53,  16,   0,   0,   0, 118, 101, 114,
+          107, 104, 111, 104, 108, 105,  97, 100,  46, 110,
+          101,  97, 114,  64, 250, 172, 159,  46, 107, 235,
+           22
+        ];
+        let rec_msg = ValidatorMsg::try_from_slice(&rec).unwrap();
+        println!("ValidatorMsg: {:?}", rec_msg);
 
     }
 }

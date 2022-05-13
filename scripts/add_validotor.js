@@ -29,14 +29,14 @@ const config = {
             {
                 // name of contract you're connecting to
                 viewMethods: ["get_deposit_account_id", "get_validators"], // view methods do not change state but usually return a value
-                changeMethods: ["add_validator", "send_tips"], // change methods modify state
+                changeMethods: ["add_validator", "remove_validator", "send_tips"], // change methods modify state
                 sender: account, // account object to initialize and sign transactions.
             }
         );
         
-        console.log(await contract.add_validator(
+        console.log(await contract.remove_validator(
             {
-                validator_pk: "E3PNqDq6VfR2eNk3nBDkgVEVz9RjeZkBMVe9tZDjupER" // argument name and value - pass empty object if no args required
+                validator_pk: "Ah51gcfsTnrnvfhj6AERkEWz3E8U1yiRqhPRGza1Nu6p" // argument name and value - pass empty object if no args required
             }
         ))
         console.log(await contract.get_validators(
