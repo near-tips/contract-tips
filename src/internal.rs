@@ -2,7 +2,7 @@ use crate::*;
 
 #[near_bindgen]
 impl NearTips {
-
+    /// Sets tips for service account
     pub(crate) fn set_tips(&mut self, service_token_id: &ServiceTokenId, set_tips: u128) {
         println!("ENTER SET TIP");
         println!("ServiceTokenId: {:?}", service_token_id);
@@ -10,6 +10,7 @@ impl NearTips {
         println!("RES: {:?}", res);
     }
 
+    /// Decrease deposit amount for near account
     pub(crate) fn decrease_deposit(&mut self, account_token_id: &AccountTokenId, amount: u128) {
         let deposit = match self.deposits.get(account_token_id) {
             Some(deposit) => deposit,
@@ -19,6 +20,7 @@ impl NearTips {
         self.deposits.insert(account_token_id, &(deposit - amount));
     }
 
+    /// Increase deposit amount for near account
     pub(crate) fn increase_deposit(&mut self, account_token_id: &AccountTokenId, amount: u128) -> u128 {
         let set_amount = match self.deposits.get(account_token_id) {
             Some(deposit) => deposit + amount,
@@ -33,6 +35,7 @@ impl NearTips {
         set_amount
     }
 
+    /// Accepts deposit
     pub(crate) fn deposit(&mut self) -> (AccountId, u128) {
         let account_id = env::predecessor_account_id();
         let attached_deposit = near_sdk::env::attached_deposit();
@@ -43,6 +46,8 @@ impl NearTips {
         (account_id, attached_deposit)
     }
 
+    /// Validates validators signature
+    /// If any signature is wrong - panics
     pub(crate) fn validate_signatures(&mut self, service_id: &ServiceId, account_id: &AccountId, deadline: u64, signatures: Vec<Vec<u8>>, validators_pks: Vec<AccountId>) {
         if signatures.len() != validators_pks.len() { near_sdk::env::panic("Wrong pks/signatures len.".as_bytes()) }
         if (signatures.len() as u64) < self.validators.len() * 2 / 3 || signatures.len() == 0 { near_sdk::env::panic("Not enough validators approve.".as_bytes()) }
@@ -70,6 +75,7 @@ impl NearTips {
         }
     }
 
+    /// Withdraws all tips from service accounts linked to near account 
     pub(crate) fn withdraw_tips_to_account(&mut self, account_id: &AccountId) {
         println!("Withdraw account: {}", account_id);
         if let Some(ids) = self.linked_accounts.get(&account_id) {
@@ -90,6 +96,7 @@ impl NearTips {
         }
     }
 
+    /// Withdraws tips from service account with commission
     pub(crate) fn withdraw_tips_to_account_with_commission(&mut self, service_id: &ServiceId, account_id: &AccountId, commission: u128, is_link: bool) {
         let tip_amount = self.get_service_id_tips(service_id.clone());
         if tip_amount > 0 {

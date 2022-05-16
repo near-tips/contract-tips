@@ -62,11 +62,13 @@ struct ValidatorMsg {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct NearTips {
+    /// Master account for ownership methods (beta)
     horseradish_key: AccountId,
     deposits: LookupMap<AccountTokenId, Balance>,
     tips: LookupMap<ServiceTokenId, Balance>,
     linked_accounts: LookupMap<AccountId, ServiceBatch>,
     validators: UnorderedMap<String, Vec<u8>>,
+    /// Is not using yet
     whitelisted_tokens: LookupSet<TokenId>,
 }
 
@@ -94,6 +96,7 @@ impl NearTips {
     }
 
     #[payable]
+    /// Method accepts near as deposit, that could be used for tips
     pub fn deposit_account(&mut self) {
         let deposit = self.deposit().1;
         if deposit == 0 {
@@ -102,6 +105,10 @@ impl NearTips {
     }
 
     #[payable]
+    /// Method send tips to list of service accounts 
+    /// The method also accepts deposit.
+    /// user_ids - list of post authors (some post could have several authors)
+    /// tips - amount of tips
     pub fn send_tips(&mut self, user_ids: Vec<ServiceId>, tips: U128) {
         let tips = tips.0;
         let (account_id, dep) = self.deposit();
@@ -112,6 +119,8 @@ impl NearTips {
         }
 
         // Strange math connected with storage handling
+        // Not sure is it ok
+        // Required to have enough NEAR on contract balance for storage
         let mut storage_expances = 0;
         for service_id in user_ids {
             let service_token_id = &(service_id, NEAR.to_string());
@@ -127,6 +136,7 @@ impl NearTips {
         self.decrease_deposit(&(account_id, NEAR.to_string()), tips + storage_expances);
     }
 
+    /// Allows to withdraw deposited amount
     pub fn withdraw_deposit(&mut self, withdraw_amount: U128) {
         let withdraw_amount = withdraw_amount.0;
         let account_id = env::predecessor_account_id();
@@ -134,6 +144,8 @@ impl NearTips {
         Promise::new(account_id).transfer(withdraw_amount);
     }
 
+    /// Get list of service accounts connected to near account
+    /// root.near: [Stackoverflow, id], [Twitter, id]..
     pub fn get_linked_accounts(&self, account_id: AccountId) -> Vec<ServiceId> {
         let accounts = self.linked_accounts.get(&account_id);
         if accounts.is_none() {
@@ -143,6 +155,7 @@ impl NearTips {
         accounts.iter().map(|(service, id)| ServiceId{service, id}).collect()
     }
 
+    /// Get amount of tips for some service account (ex. stackoverflow)
     pub fn get_service_id_tips(&self, service_id: ServiceId) -> u128 {
         match self.tips.get(&(service_id, NEAR.to_string())) {
             Some(tips) => tips,
@@ -150,6 +163,8 @@ impl NearTips {
         }
     }
 
+    /// Iterates over all of service accounts connected to near account
+    /// And sums all of tips
     pub fn get_account_id_tips(&self, account_id: AccountId) -> u128 {
         if let Some(ids) = self.linked_accounts.get(&account_id) {
             return ids.iter().map(|(service, id)| self.get_service_id_tips(ServiceId{service, id})).sum::<u128>();
@@ -157,12 +172,16 @@ impl NearTips {
         0
     }
 
+    /// Allows near account to collect tips from all of the linked service accounts
     pub fn withdraw_tips(&mut self) {
         let account_id = env::predecessor_account_id();
         self.withdraw_tips_to_account(&account_id);
     }
 
     #[payable]
+    /// Takes validators signatures to prove that the owner of the near account is also owner of the service account.
+    /// After the validation saves the link to storage
+    /// And withdraws all collected tips to near account
     pub fn link_account(&mut self, service_id: ServiceId, account_id: AccountId, deadline: U64, signatures: Vec<Vec<u8>>, validators_pks: Vec<AccountId>) {
         let deadline = deadline.0;
         self.validate_signatures(&service_id, &account_id, deadline, signatures, validators_pks);
@@ -181,6 +200,11 @@ impl NearTips {
     }
 
     #[payable]
+    /// Takes validators signatures to prove that the owner of the near account is also owner of the service account.
+    /// And withdraws all collected tips to near account
+    /// This functions takes 5% commision, and executes not by near account owner
+    /// It is comfortable for the new NEAR users, that do not have any NEAR
+    /// Because the bot could make this tx on near side.
     pub fn withdraw_tips_to(&mut self, service_id: ServiceId, account_id: AccountId, deadline: U64, signatures: Vec<Vec<u8>>, validators_pks: Vec<AccountId>) {
         let deadline = deadline.0;
         self.validate_signatures(&service_id, &account_id, deadline, signatures, validators_pks);

@@ -3,15 +3,20 @@ use crate::*;
 #[near_bindgen]
 impl NearTips {
 
+    /// shortcut for contract owner call validation
     pub(crate) fn only_horseradish(&self) {
         assert_eq!(env::predecessor_account_id(), self.horseradish_key, "You are not a horseradish to call this method.")
     }
 
+    /// Updates owners key
     pub fn change_horseradish(&mut self, new_horseradish: AccountId) {
         self.only_horseradish();
         self.horseradish_key = new_horseradish;
     }
 
+    /// Adds the validator's public key
+    /// Accepts PK encoded in base58
+    /// (beta) owner can change validator easily
     pub fn add_validator(&mut self, validator_pk: String) {
         self.only_horseradish();
         let key_as_bytes = 
@@ -23,11 +28,14 @@ impl NearTips {
         self.validators.insert(&validator_pk, &key_as_bytes);
     }
 
+    /// Removes the validator
+    /// (beta) owner can change validator easily
     pub fn remove_validator(&mut self, validator_pk: String) {
         self.only_horseradish();
         self.validators.remove(&validator_pk);
     }
 
+    /// Get list of validators PKs
     pub fn get_validators(&self) -> Vec<String> {
         self.validators.keys().collect()
     }
@@ -41,7 +49,7 @@ impl NearTips {
     }
 }
 
-
+/// Hope it works, not tested yet
 #[cfg(target_arch = "wasm32")]
 mod upgrade {
     use near_sdk::env::BLOCKCHAIN_INTERFACE;
