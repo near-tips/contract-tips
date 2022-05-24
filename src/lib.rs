@@ -4,11 +4,12 @@ use std::convert::TryFrom;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::collections::{ LookupMap, LookupSet, UnorderedMap };
-use near_sdk::{env, near_bindgen, Promise, AccountId, Balance, BorshStorageKey};
+use near_sdk::{utils, env, near_bindgen, ext_contract, callback, Promise, AccountId, Balance, BorshStorageKey};
 use near_sdk::json_types::{U128, U64};
 use sha2::Sha512;
 use sha2::Digest;
 use ed25519_dalek::Verifier;
+use serde_json::json;
 
 mod internal;
 mod manage;
@@ -40,6 +41,7 @@ const NEAR: &str = "near";
 const PRICE_PER_BYTE: u128 = 10000000000000000000; // 19eyoctoNEAR
 const NEW_DEPOSIT_PRICE: u128 = 20 * PRICE_PER_BYTE; // Not preciesed amount
 const NEW_LINK_PRICE: u128 = 25 * PRICE_PER_BYTE; // Not preciesed amount
+pub const CALLBACK_GAS: u64 = 20000000000000;
 
 #[derive(BorshStorageKey, BorshSerialize)]
 pub enum StorageKeys {
@@ -67,6 +69,7 @@ pub struct NearTips {
     deposits: LookupMap<AccountTokenId, Balance>,
     tips: LookupMap<ServiceTokenId, Balance>,
     linked_accounts: LookupMap<AccountId, ServiceBatch>,
+    
     validators: UnorderedMap<String, Vec<u8>>,
     /// Is not using yet
     whitelisted_tokens: LookupSet<TokenId>,
@@ -83,6 +86,11 @@ impl Default for NearTips {
             whitelisted_tokens: LookupSet::new(StorageKeys::WhitelistedTokens),
         }
     }
+}
+
+#[ext_contract(ext_self)]
+pub trait ExtSelf {
+    fn withdraw_result_callback(#[callback] account_id: AccountId, withdraw_back: U128);
 }
 
 #[near_bindgen]
@@ -136,12 +144,28 @@ impl NearTips {
         self.decrease_deposit(&(account_id, NEAR.to_string()), tips + storage_expances);
     }
 
+    #[private]
+    pub fn withdraw_result_callback(&mut self, #[callback] account_id: AccountId, #[callback] withdraw_amount: U128) {
+        println!("CALLBACKED!!!");
+        if !utils::is_promise_success() {
+            self.increase_deposit(&(account_id, NEAR.to_string()), withdraw_amount.0);
+        }
+    }
+
     /// Allows to withdraw deposited amount
     pub fn withdraw_deposit(&mut self, withdraw_amount: U128) {
         let withdraw_amount = withdraw_amount.0;
         let account_id = env::predecessor_account_id();
-        self.decrease_deposit(&(account_id.clone(), NEAR.to_string()), withdraw_amount);
-        Promise::new(account_id).transfer(withdraw_amount);
+        self.decrease_deposit(&(account_id, NEAR.to_string()), withdraw_amount);
+        Promise::new(account_id).transfer(withdraw_amount).then(
+            ext_contract::withdraw_result_callback(
+                account_id,
+                withdraw_amount,
+                &env::current_account_id(),
+                0,
+                CALLBACK_GAS
+            )
+        );
     }
 
     /// Get list of service accounts connected to near account
@@ -168,7 +192,7 @@ impl NearTips {
     pub fn get_account_id_tips(&self, account_id: AccountId) -> u128 {
         if let Some(ids) = self.linked_accounts.get(&account_id) {
             return ids.iter().map(|(service, id)| self.get_service_id_tips(ServiceId{service, id})).sum::<u128>();
-        }
+        };
         0
     }
 
